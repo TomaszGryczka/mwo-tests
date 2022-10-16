@@ -1,5 +1,7 @@
 package com.github.tomaszgryczka.mwotests;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -9,6 +11,7 @@ import java.util.stream.Collectors;
 @Component
 public class PlayerService {
     private final List<Player> playersDb = new ArrayList<>();
+    private static final Logger logger = LoggerFactory.getLogger(PlayerService.class);
 
     public Player save(final PlayerRequest playerRequest) {
 
@@ -49,9 +52,10 @@ public class PlayerService {
         final long oldPlayerIndex = playersDb.stream()
                 .filter(p -> p.getId() == playerId)
                 .findFirst()
-                .map(Player::getId)
+                .map(playersDb::indexOf)
                 .orElseThrow(IllegalArgumentException::new);
 
+        logger.info("Updating player with id: {}", oldPlayerIndex);
         playersDb.set(Math.toIntExact(oldPlayerIndex), player);
 
         return playersDb.get(Math.toIntExact(oldPlayerIndex));

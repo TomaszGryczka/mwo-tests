@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,7 +36,7 @@ public class PlayerControllerTests {
 
     @BeforeEach
     public void setPlayerRepository() {
-        ReflectionTestUtils.setField(playerService, "playersDb", playersData());
+        ReflectionTestUtils.setField(playerService, "playersDb", getPlayersData());
     }
 
     @Test
@@ -52,7 +53,7 @@ public class PlayerControllerTests {
                 .build();
 
         // when
-        ResultActions response = mockMvc.perform(post("/players")
+        final ResultActions response = mockMvc.perform(post("/players")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(playerRequest)));
@@ -75,7 +76,7 @@ public class PlayerControllerTests {
         final long playerId = 3L;
 
         // when
-        ResultActions response = mockMvc.perform(get("/players/" + playerId)
+        final ResultActions response = mockMvc.perform(get("/players/" + playerId)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -94,28 +95,67 @@ public class PlayerControllerTests {
     }
 
     @Test
-    public void should_ThrowIllegalArgumentException_When_UpdatingNotExistingUser() throws Exception {
+    public void should_ReturnUpdatedPlayer_When_UpdatePlayerInfoRequestSent() throws Exception {
         // given
-        final long notExistingPlayerId = 8L;
-        final Player notExistingPlayer = new Player(
-                7L,
-                3L,
-                "Czesiek",
-                "Zwinny",
-                "Polska",
-                LocalDate.of(2000, 12, 12),
-                160.0,
-                80.0);
+        final Player updatedInfoPlayer = Player.builder()
+                .id(1L)
+                .coachId(3L)
+                .firstname("PRIVATE")
+                .lastname("STATIC")
+                .country("GERMANY")
+                .dateOfBirth(LocalDate.of(2000, 12, 12))
+                .height(165.0)
+                .weight(165.0)
+                .build();
 
         // when
-        Assertions.assertThrows(IllegalArgumentException.class,
-                () -> mockMvc.perform(put("/players")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)));
+        final ResultActions response = mockMvc.perform(put("/players")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updatedInfoPlayer)));
 
+        // then
+        response.andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(updatedInfoPlayer)));
     }
 
-    private List<Player> playersData() {
+    @Test
+    public void should_DeletePlayer_When_DeletePlayerRequestSent() throws Exception {
+        // given
+        final long playerIdToDelete = 1L;
+
+        // when
+        final ResultActions response = mockMvc.perform(delete("/players/" + playerIdToDelete));
+
+        // then
+        final List<Player> playersDb = (List<Player>) ReflectionTestUtils.getField(playerService, "playersDb");
+        final boolean result = playersDb.stream().noneMatch(player -> player.getId() == playerIdToDelete);
+
+        response.andExpect(status().isNoContent());
+        Assertions.assertTrue(result);
+    }
+
+    @Test
+    public void should_FilterPlayersFromPoland_When_FilterByPolandRequestSent() throws Exception {
+        // given
+        final String country = "Polska";
+
+        // when
+        final ResultActions response = mockMvc.perform(get("/players/filter/" + country)
+                .accept(MediaType.APPLICATION_JSON));
+
+        // then
+        response.andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(getPlayersLivingInPoland())));
+    }
+
+    private List<Player> getPlayersLivingInPoland() {
+        return getPlayersData().stream()
+                .filter(player -> player.getCountry().equals("Polska"))
+                .collect(Collectors.toList());
+    }
+
+    private List<Player> getPlayersData() {
         return new ArrayList<>(Arrays.asList(
                 new Player(
                         0L,
