@@ -1,5 +1,6 @@
 package com.github.tomaszgryczka.mwotests;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +69,20 @@ public class PlayerControllerTests {
                 .andExpect(jsonPath("$.dateOfBirth").value("2000-10-10"))
                 .andExpect(jsonPath("$.height").value(180.0))
                 .andExpect(jsonPath("$.weight").value(100.0));
+    }
+
+    @Test
+    public void should_ReturnBadRequestCode_When_CreateWithNullRequest() throws Exception {
+        // given
+        final PlayerRequest nullPlayerRequest = null;
+
+        // when
+        final ResultActions response = mockMvc.perform(post("/players")
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(nullPlayerRequest)));
+        // then
+        response.andExpect(status().isBadRequest());
     }
 
     @Test
